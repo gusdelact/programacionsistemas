@@ -1,0 +1,1367 @@
+		TEMA VII
+		Comunicación entre procesos distribuídos.
+
++ Procesos Distribuidos.
+
+En los temas anteriores, el procesamiento se ha realizado de forma local
+y toda la comunicación entre procesos utiliza estructuras de datos locales
+del kernel.
+
+Cuando es necesario que los recursos de cómputo se compartan a través de una
+red, es necesario recurrir a esquemas de comunicación basados en protocolos.
+
+En este aspecto, UNIX ofrece como protocolo integrado al sistema operativo,
+TCP/IP.
+
+UNIX ofrece dos tipos de mecanismos para comunicar dos o mas procesos,
+uno de ellos es el concepto de socket y el otro es el de RPC.
+
++ Repaso de Protocolos.
+
+Un protocolo es un lenguaje que permite que dos entidades entablen comunicación
+entre si.
+
+La teoría de protocolos define varias capas de comunicación con el fin
+de separar detalladamente cada una de las funciones de cada capa.
+
+El modelo que utiliza TCP/IP, suponiendo una red Ethernet, es el siguiente:
+						Unidad
+---------		---------
+Aplicacion	<->	Aplicacion		Paquete Aplicación
+---------- 		---------
+Transporte	<->	Transporte		Paquete TCP o UDP
+----------		----------
+Red		<->	Red			Paquete IP
+----------		----------
+Enlace		<->	Enlace			Frame Ethernet
+----------		----------
+Física			Física			Bit
+----------		----------
+ |_______________________|
+
+
+Cada capa, permite al usuario de la misma, concebir que en ese nivel
+se realiza la comunicación, aunque realmente utiliza la capa inferior.
+
+La capa que realmente transporta la información es la capa física, que
+son bits en forma de señales eléctricas, ondas electromagnéticas y que
+viajan en un medio físico.
+
+La siguiente capa, de enlace, organiza los bits y les da significado, además
+de controlar los errores y repeticiones en el medio físico. Existen diferentes
+tipos de protocolos, como Ethernet, Token Ring, FDDI, etc. Estos protocolos
+normalmente son procesado por hardware, normalmente conocido como
+tarjeta de red.
+
+La capa de red permite comunicar diferentes nodos en una misma o diferente
+red. Este protocolo direcciona de una forma homogenea a todos los nodos
+de una red, dando a cada nodo una dirección unica, y procurando que la 
+información le llegue al nodo, aunque tenga que ir por diferentes rutas
+y cambiando a distintos tipos de red. El protocolo IP (Internet Protocol
+o protocolo de interred) se encarga de implantar esta función. Normalmente
+este protocolo es procesado por el sistema operativo y tambien por hardware
+conocido como ruteadores. Este protocolo no es orientado a conexión, ya
+que no le preocupa si la información llega al destinatario.
+
+La capa de transporte comunica dos procesos en diferentes nodos de una
+red. Para que un proceso reciba información, debe leer o escribir dicha
+información de un puerto, que es un número asignado únicamente a este
+proceso. El protocolo TCP se encarga de esta función, ya que lleva información
+de un proceso a otro, direccionandolos por puerto, este protocolo es orientado
+a conexión y checa que todo paquete TCP emitido llegue a su destino. Otro
+protocolo es UDP, que es un protocolo no orientado a conexión. Normalmente
+TCP es implantado en el sistema operativo.
+
+Entre la capa de transporte y de aplicación se ponen mecanismos para que
+un usuario (un programador) inyecte o lea paquetes a una aplicación. Uno
+de esos mecanismos son los sockets.
+
+La capa de aplicación es como tal, donde las aplicaciones se ejecutan.
+Aquí no existe un protocolo uniforme y varia dependiendo del tipo de
+servicio. Los servicios que actualmente existen son para Internet
+ (WWW,correo,DNS,telnet,ftp), sistemas de "backoffice" (WINS, NFS, NetBios, lpd, NIS), bases de datos (SQLNet, TDS), objetos distribuídos (CORBA, DCOM),
+administradción de redes (SNMP) entre muchos mas.
+
+Ejercicio.
+1. Plantear, desde el punto de vista de las capas de protocolos, como
+se obtiene la pagina de www.starwars.com en el explorador de Internet.
+2. Dar una  descripción de 10 protocolos de la capa de aplicación.
+
++ Sockets.
+
+Un socket es una tubería que se estable entre dos procesos, donde
+cada proceso esta localizado en un nodo con una direccion IP
+ de la red y leyendo y/o escribiendo a un puerto TCP.
+
+Por tanto, un socket es la combinación de dirección IP y puerto TCP.
+
+UNIX implanta los sockets como una estructura de datos del kernel. Para poder
+crear un socket, es necesario llamar al kernel, el cual manipula una tabla
+de sockets, en la cual, por cada entrada de dicha tabla, almacena la dirección
+IP local, el puerto TCP local, la dirección remota IP y el puerto TCP remoto.
+
+En UNIX y siguiendo la filosofía del sistema operativo, se trata un socket
+como un archivo y por tanto, se aplican las mismas operaciones de archivos.
+
++ UNIX y la capa física.
+
+UNIX soporta varios dispositivos de comunicación, dependiendo del hardware
+donde se ejecute. Normalmente manipula las tarjetas de red
+ (ethernet, token ring, FDDI), puertos seriales,.
+
++ UNIX y la capa de enlace.
+
+Para controlar el hardware de tarjetas de red, UNIX utiliza manejadores
+de dispositvos (device driver), el cual es la interfaz entre el dispositivo
+y el kernel. Las capas superiores pasan información al device driver utilizando
+STREAMS.
+
+Es importante saber que por cada nuevo dispositivo de comunicación que
+se conecte a la maquina con UNIX, se debe instalar (o programar) el device
+driver que lo manipula.
+
+En UNIX es posible ver que dispositivos se tienen conectados utilizando
+el comando ifconfig .
+
+/sbin/ifconfig -a
+
+proporciona una lista de los manejadores de dispositivos disponibles.
+
+En esta capa, UNIX proporciona protocolos como Ethernet (802.3), Token Ring
+(802.5), FDDI o PPP.
+
++ UNIX y la capa de red.
+
+UNIX implanta la capa de red como un pseudo dispostivo, de tal forma
+que se puede utilizar un device driver para manipularlo (y en consecuencia
+STREAMS).
+
+Cada UNIX tiene una dirección IP, como toda máquina que maneja IP, tiene
+asociada la dirección 127.0.0.1 o localhost; además de su dirección IP.
+Esta información se puede obtener con el comando ifconfig -a, donde
+se puede encontrar la dirección encontrada a cada dispositivo de comunicación.
+
+Además UNIX administra las tablas de ruteo y puede ser un ruteador, utilizando
+protocolo RIP.
+
++ UNIX y la capa de transporte.
+
+UNIX implanta la capa de transporte como un pseudo dispositivo, el cual
+es manejado con un device driver y STREAMS.
+
+Cuando un proceso quiere recibir información o escribir, tiene que pedir
+al kernel que le otorge un socket.
+
+Por medio de este socket, el proceso se puede convertir en cliente o servidor.
+
+Si es un servidor, el sistema operativo asigna al proceso el puerto que dicho
+proceso pidió asociarse. 
+
+En UNIX se pueden utilizar puertos de 0 a 65535 (o 2^16-1). 
+
+Normalmente del puerto 0 al 1024 solo los puede utilizar un
+proceso con identificador de usuario root. Normalmente este rango de puertos
+están asignados a procesos que implanta servicios para protocolos como FTP,
+Telnet, SMTP, Sendmail, SNMP, RPC.
+
+
+Muchos de los servicios están manipulados por un proceso demonio conocido
+como inetd, el cual toma control de los puertos 0 a 1024 y el recibir alguna
+petición TCP por estos puertos, dispara un proceso hijo que atiende esa
+conexión.
+
+En el caso de ser puertos superiores al 1024, se pueden arrancar procesos
+que abran un socket y no necesariamente como el usuario root.
+
+Para poder conocer que puertos están activos, además de conexiones, se puede
+utilizar el comando 
+
+netstat -an
+
+
+Cuando se manipulan los sockets como cliente, este solo debe pedir al
+kernel que lo conecte al nodo y proceso donde se encuentra el servicio.
+
+
+Ejercicio.
++ Describir el formato de la tabla /etc/inedt.conf y /etc/services
+
++ UNIX y la capa de aplicación.
+
+UNIX proporciona un conjunto de servicios, que son programas que utilizan
+llamadas UNIX, para atender peticiones de protocolos como FTP, telnet.
+
+Ejercicio.
++ Investigar que programas implantan los servicios de: Telnet, FTP, SMTP,
+HTTP, NFS, NIS, RPC, finger.
+
+
++ Arquitectura de Comunicaciones UNIX
+
+En resúmen, este es el esquema de comunicación UNIX.
+
+Nodo UNIX
+------------------------------------------------------------------------
+
+ --   socket
+ PR1  <--------->  	K<-->device <->pseudo device
+ ---	    		E    driver	TCP
+ 	    		R    TCP
+ ---	socket 		N		|
+ PR2  <----------->	E		|->device <->pseudo device IP		
+ ---	    		L          	   driver     |
+ 				   	   IP	      |-->device Driver 
+ -----	socket						  Equipo de comunicación
+ inetd <---------->					   |
+ -----							   |
+-----------------------------------------------------------|-----------------
+							   |--|
+	------------		
+				      				Dispositivo
+	Otro		-------	Medio de comunicacion<-------de comunicación
+	Nodo (UNIX,Win32,etc)
+	------------
+
+Ejemplo.
+
++Desde el punto de vista de UNIX, si está en una maquina UNIX y a través
+de Netscape decide copiar los videos de Episode I, plantear como sería
+este mecanismo.
+
++ Hacer este planteamiento, pero en este caso, cuando desde una PC
+con Win32 se abre una conexión telnet a helios u orion.
+
+
++ Pasos para construir procesos distribuídos.
+0. Diseñar el protocolo y las acciones a tomar ante cada instrucción
+del protocolo. Si el protocolo ya existe, leer el documento que lo
+define.
+1. Determinar la dirección del servidor remoto.
+2. Determinar el puerto donde esta activo el servicio.
+3. Escribir, si no existe, el programa que implante el servicio.
+4. Probar y activar el proceso que implanta el servicio.
+5. Escribir un programa cliente.
+
+
++ Llamadas al kernel.
+
+Para implantar los pasos 3 y 5 se necesitan utilizar algunas llamadas
+al kernel.
+
+Estas son:
+
+socket:
+
+     #include <sys/socket.h>
+
+     int socket(int domain, int type, int protocol);
+
+crea un socket dentro del kernel. Para el caso de TCP/IP, deben darse
+los siguientes valores a los parametros de la siguiente forma:
+
+domain --> AF_INET (Address Family Internet)
+type   --> SOCK_STREAM (se trata la conexión como flujo de bytes)
+protocol --> 0  (el kernel decide que protocolo utilizar, normalmente es TCP)
+
+Retorna un valor negativo en caso de error, y en caso de exito, un descriptor
+de socket, que asocia al proceso con la entrada de la tabla de sockets del
+kernel.
+
+connect.
+
+Estable conexión con un servicio TCP/IP remoto, utilizado por un programa
+cliente.
+
+     #include <sys/socket.h>
+
+     int connect(int socket, const struct sockaddr *address,
+          size_t address_len);
+
+esta llamada debe indicar los parámetros de la siguiente manera:
+
+socket --> descriptor de socket, que se obtiene en la llamada socket.
+struct sockaddr -> apuntador a un estructura de datos denominada sockaddr.
+Esta estructrua no se manipula directamente. Dado que UNIX contempla el
+manejar distintos protocolos, y la función de esta estructura es indicar
+a que nodo/puerto remoto se debe conectar el proceso cliente, se debe utilizar
+un estructura denominda struct sockaddr_in, que contien los siguientes campos:
+
+#include <inet/in.h>
+
+struct in_addr {
+
+        u_long s_addr;
+};
+
+struct sockaddr_in {
+
+        short sin_family;
+        u_short sin_port;
+        struct in_addr sin_addr;
+        unsigned char   sin_zero[8];
+};
+
+El primer campo indica el tipo de dirección que se está indicando, en
+este caso es AF_INET.
+El segundo campo sirve para indicar la dirección del puerto remoto,
+se puede indicar como un número entero, pero con el fin de evitar problemas
+con distintas maquinas, se debe asignar despues de la llamada htons, que convierte un numero short a formato de red.
+El tercer campo es una estructura, que define la dirección IP y cuyo subcampo
+sin_addr, lleva el valor de la misma. Si se proporciona la dirección en
+formato xxx.xxx.xxx.xxx, se debe invocar previamente a la funcion inet_addr,
+que recibe la dirección IP como una cadena de caracteres y la convierte
+a su representación hexadecimal.
+El cuarto campo no se usa.
+
+Esta llamada retorna un número negativo en caso de que tenga un error, y
+un 0 si tiene exito.
+
+El siguiente segmento de codigo muesta como conectarse a un cliente.
+
+int sd;
+int puerto=25;
+char ip[]="127.0.0.1"
+struct sockaddr_in sockaddress;
+....
+sd=socket(AF_INET,SOCK_STREAM,0);
+....
+sockaddres.sin_family=AF_INET;
+sockaddres.sin_port=htons(port);
+sockaddres.sin_addr.s_addr=inet_addr(ip);
+connect(sd,(struct sockaddr *)&sockaddress, sizeof(struct sockaddr_in));
+
+
+El Ejemplo 0.1 muestra como se abre un socket al servicio de correo electrónico
+en el nodo local.
+/*Ejemplo1 Un proceso cliente se conecta al servicio de fecha de UNIX
+por el puerto 13*/
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+
+main(){ 
+	int puerto= 25; /*el puerto del servicio del correo es 25*/
+	int sd; /*este es el descriptor de socket, se maneja como un
+		archivo*/
+	char ip[]="127.0.0.1";
+	struct sockaddr_in sockaddr; /*estructura de datos para prover lo
+				necesario para conectarse al servicio*/
+
+
+	/* se abre un socket que direcciona la informacion 
+	a una nodo con direccion IP, por tanto se indica AF_INET.
+	Se utiliza TCP. por tanto el modo de conexion es orientado
+	a flujo de bytes.
+	El tercer parametro se pone a 0 para dejar que el kernel
+	utilice el protocolo por omision, en esta caso TCP/IP
+	*/
+	sd=socket(AF_INET,SOCK_STREAM,0);
+	
+	if (sd < 0) { /*se checa que no exista error*/
+		perror("Error al abrir socket");
+		exit(2); 	
+	}
+
+	/*los siguientes pasos preperan la informacion para que el kernel
+	conozca como debe conectarse al otro nodo
+	una estructura sockaddr debe indicar el tipo de direccion,
+	la direccion IP y el puerto
+	*/
+	printf("Asi retorna inet_addr %x\n", inet_addr(ip));
+	printf("Asi retorna htons %d\n", htons(puerto));
+	sockaddr.sin_family=AF_INET; /*la direccion que se especifica 
+					esta en formato IP*/
+	sockaddr.sin_addr.s_addr= inet_addr(ip);
+	sockaddr.sin_port=  htons(puerto);
+
+	/*para conectarse, se debe utilizar la funcion connec,
+	que recibe el socket descriptor, la estructura para realizar
+	datos de conexion y el tamanno de la misma
+	*/
+
+	if (connect(sd,(struct sockaddr*)&sockaddr ,sizeof(sockaddr))) {
+		perror("error al abrir conexion");
+		exit(3);
+	}
+
+	/*siempre se debe cerrar la conexion*/
+	close(sd);
+}
+
+Para compilar este programa, se debe indicar una opción especial
+al compilador
+
+cc -o Ejemplo0.1 Ejemplo0.1.c -lsocket -lnsl
+
+Las opciones -lsocket -lnsl, indican que se deben utilizar estas librerias
+del sistema operativo. Esto puede variar en diferentes UNIX.
+
+Este programa imprime:
+
+
+Asi retorna inet_addr 7f000001
+Asi retorna htons 25
+
+como se puede observar, la direccion IP la imprime en hexadecimal. Aunque
+el puerto no sufre ninguna modificación, se recomienda siempre aplicar esta
+función para evitar problemas con otro tipo de computadoras.
+Un socket SIEMPRE se debe cerrar.
+
+bind. Esta llamada se utiliza por el programa servidor y su función es
+asociar una dirección y puerto TCP del sistema operativo a este proceso.
+
+Su formato es:
+
+     #include <sys/socket.h>
+
+     int bind(int socket, const struct sockaddr *address,
+          size_t address_len);
+
+el parametro socket se obtiene de lo que retorna la llamada socket.
+el segundo parametro indica la dirección de una estructura de datos de tipo
+sockaddr. En esta estructura se debe indicar la familia, con que dirección 
+IP se liga el proceso (es valido que solo acepte peticiones a localhost, muy
+utilizado para firewalls y proxies) y el puerto al que se va a asociar el
+proceso.
+
+El siguiente Ejemplo0.2 muestra como utilizar bind.
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+
+
+main() {
+	int serversocket; /*descriptor de socket para servidor*/
+	int puerto=4000; /*puerto donde se escucha el servicio*/
+	struct sockaddr_in sockaddr;
+
+
+	serversocket=socket(AF_INET,SOCK_STREAM,0); /*abrir socket 
+					para servidor*/	
+
+	/*llenar estructura para ligar el socket con el puerto TCP*/	
+	sockaddr.sin_family= AF_INET; /*utilizar direccion con formato IP*/
+	sockaddr.sin_addr.s_addr= htonl(0x00000000); /*ligar socket 
+					a cualquier direccion (0.0.0.0)posible
+					de la maquina*/
+	sockaddr.sin_port= htons(puerto);
+
+	/*aplicar la asociacion con el puerto*/
+	if (
+	 bind(serversocket, ( struct sockaddr *)&sockaddr,sizeof(sockaddr)) < 0
+	) {
+		perror("error en bind\n");
+		exit(2);
+	}
+
+
+	close(serversocket);
+}
+
+
+listen. Un proceso servidor indica que ya puede recibir conexiones.
+
+El formato de esta llamada es:
+
+     #include <sys/socket.h>
+
+     int listen(int socket, int backlog);
+
+socket -> el descriptor del socket retornado por la llamada socket
+backlog -> indica hasta cuantas conexiones simultaneas puede aceptar
+	   este proceso.
+Retorna un 0 en caso de éxito, un número negativo en caso contrario.
+
+El siguiente ejemplo muestra como utilizar esta llamada:
+
+
+#include <sys/socket.h>
+#include <signal.h>
+
+#include "miin.h"
+
+
+
+main() {
+	int serversocket; /*descriptor de socket para servidor*/
+	int puerto=4000; /*puerto donde se escucha el servicio*/
+	struct sockaddr_in sockaddr;
+
+
+	serversocket=socket(AF_INET,SOCK_STREAM,0); /*abrir socket 
+					para servidor*/	
+
+	/*llenar estructura para ligar el socket con el puerto TCP*/	
+	sockaddr.sin_family= AF_INET; /*utilizar direccion con formato IP*/
+	sockaddr.sin_addr.s_addr= htonl(0x00000000); /*ligar socket 
+					a cualquier direccion (0.0.0.0)posible
+					de la maquina*/
+	sockaddr.sin_port= htons(puerto);
+
+	/*aplicar la asociacion con el puerto*/
+	if (
+	 bind(serversocket, ( struct sockaddr *)&sockaddr,sizeof(sockaddr)) < 0
+	) {
+		perror("error en bind\n");
+	}
+
+
+	if (listen(serversocket,5) ) {
+		perror("error en listen");
+	}
+	close(serversocket);
+}
+
+accept. Esta llamada indica al proceso que debe aceptar peticiones TCP/IP.
+
+Su formato es:
+
+     #include <sys/socket.h>
+
+     int accept (int socket, struct sockaddr *address,
+          size_t *address_len);
+
+Debe indicar lo siguiente en los parámetros:
+
+socket --> es el descriptor del socket, regresado por la llamada socket
+address -> es una apuntador a una estructura de tipo sockaddr, normalmente
+se utiliza una estructura struct sockaddr_in, la cual es llenada con los
+datos del cliente remoto (dirección IP y puerto TCP remoto).
+address_len -> normalmente es el sizeof de  struct sockaddr_in.
+
+Esta llamada retorna un numero positivo, que es el descriptor del nuevo
+socket por medio del cual el proceso servidor escribe o lee peticiones del
+cliente. Un número negativo es retornado en caso de error.
+
+El siguiente ejemplo muestra un programa que acepta una conexion TCP/IP e
+imprime los datos del cliente remoto.
+
+#include <sys/socket.h>
+#include <signal.h>
+
+#include "miin.h"
+
+
+
+main() {
+	int serversocket; /*descriptor de socket para servidor*/
+	int puerto=4000; /*puerto donde se escucha el servicio*/
+	struct sockaddr_in sockaddr;
+	char buffer[128];
+
+	serversocket=socket(AF_INET,SOCK_STREAM,0); /*abrir socket 
+					para servidor*/	
+
+	/*llenar estructura para ligar el socket con el puerto TCP*/	
+	sockaddr.sin_family= AF_INET; /*utilizar direccion con formato IP*/
+	sockaddr.sin_addr.s_addr= htonl(0x00000000); /*ligar socket 
+					a cualquier direccion (0.0.0.0)posible
+					de la maquina*/
+	sockaddr.sin_port= htons(puerto);
+
+	/*aplicar la asociacion con el puerto*/
+	if (
+	 bind(serversocket, ( struct sockaddr *)&sockaddr,sizeof(sockaddr)) < 0
+	) {
+		perror("error en bind\n");
+	}
+
+
+	if (listen(serversocket,5) ) {
+		perror("error en listen");
+	} else {
+		struct sockaddr_in claddr;
+		int rtn,len=sizeof(claddr);
+
+		 rtn=
+                accept(serversocket,(struct sockaddr *)&claddr,&len);
+
+		if (rtn < 0) {
+                        perror("error en accept");
+                } else {
+                        sprintf(buffer,"Cliente con datos IP:%s,puerto:%d se le asigna conexion con descriptor %d\n",
+                        inet_ntoa(claddr.sin_addr),claddr.sin_port,rtn);
+                        write(2,buffer,strlen(buffer));
+                        close(rtn);
+                }
+	}
+
+	
+	close(serversocket);
+}
+
+Para poder probar este programa, desde otra sesion, ejecutar :
+
+telnet localhost 4001
+
+
+Otras operaciones que se puede aplicar sobre sockets son read, write, 
+select, close.
+
+Ejercicio:
+
+1. Escribir un programa como el ejemplo0.4, pero hacer que este proceso
+lea de un archivo la lista de direcciones que se puede conectar al servicio.
+Debe imprimir un Aceptado o Denegado.
+2. Por que el programa 0.4 se probo con el comando telnet y poniendo como
+segundo parámetro el número del puerto remoto.
+3. Como se podría detectar que un servidor de base de datos, Sybase, que
+esta en un nodo remoto con dirección 200.4.103.2 y en el puerto 10001 está 
+activo.
+
++ Escritura de un programa cliente.
+
+Con las llamadas anteriores, es posible construir programasa clientes.
+
+El Ejemplo1 muestra como un programa utiliza el servicio de fecha y hora
+de UNIX, que reside en el puerto 13.
+
+/*Ejemplo1 Un proceso cliente se conecta al servicio de fecha de UNIX
+por el puerto 13*/
+
+#include <sys/socket.h>
+/*#include <netinet/in.h>*/
+
+#include "miin.h"
+
+main(){ 
+	int puerto= 25; /*el puerto del servicio del correo es 25*/
+	int sd; /*este es el descriptor de socket, se maneja como un
+		archivo*/
+	char ip[]="127.0.0.1";
+	struct sockaddr_in sockaddr; /*estructura de datos para prover lo
+				necesario para conectarse al servicio*/
+
+
+	/* se abre un socket que direcciona la informacion 
+	a una nodo con direccion IP, por tanto se indica AF_INET.
+	Se utiliza TCP. por tanto el modo de conexion es orientado
+	a flujo de bytes.
+	El tercer parametro se pone a 0 para dejar que el kernel
+	utilice el protocolo por omision, en esta caso TCP/IP
+	*/
+	sd=socket(AF_INET,SOCK_STREAM,0);
+	
+	if (sd < 0) { /*se checa que no exista error*/
+		perror("Error al abrir socket");
+		exit(2); 	
+	}
+
+	/*los siguientes pasos preperan la informacion para que el kernel
+	conozca como debe conectarse al otro nodo
+	una estructura sockaddr debe indicar el tipo de direccion,
+	la direccion IP y el puerto
+	*/
+	printf("Asi retorna inet_addr %x\n", inet_addr(ip));
+	printf("Asi retorna htons %d\n", htons(puerto));
+	sockaddr.sin_family=AF_INET; /*la direccion que se especifica 
+					esta en formato IP*/
+	sockaddr.sin_addr.s_addr= inet_addr(ip);
+	sockaddr.sin_port=  htons(puerto);
+
+	/*para conectarse, se debe utilizar la funcion connec,
+	que recibe el socket descriptor, la estructura para realizar
+	datos de conexion y el tamanno de la misma
+	*/
+
+	if (connect(sd,(struct sockaddr*)&sockaddr ,sizeof(sockaddr))) {
+		perror("error al abrir conexion");
+		exit(3);
+	}
+
+	/*siempre se debe cerrar la conexion*/
+	close(sd);
+}
+
+Ejemplo1 127.0.0.1
+Sun May 16 22:40:52 1999
+
+El Ejemplo2 tiene la capacidad de conectarse a cualquier puerto, en
+algunos casos se puede quedar trabado.
+
+ #include <sys/socket.h>
+/*#include <netinet/in.h>*/
+#include "miin.h"
+
+
+main(int argc,char * argv[]){ /*la direccion IP se obtiene en el primer 
+				argumento
+				*/
+	int puerto; /
+	int sd; /*este es el descriptor de socket, se maneja como un
+		archivo*/
+	struct sockaddr_in sockaddr; /*estructura de datos para prover lo
+				necesario para conectarse al servicio*/
+	int nbytes;
+	char buffer[128];
+
+	if (argc<=2) {
+		printf("Ejemplo1 <direccionIP> <puerto>\n");
+		exit(1);
+	}
+
+	/* se abre un socket que direcciona la informacion 
+	a una nodo con direccion IP, por tanto se indica AF_INET.
+	Se utiliza TCP. por tanto el modo de conexion es orientado
+	a flujo de bytes.
+	El tercer parametro se pone a 0 para dejar que el kernel
+	utilice el protocolo por omision, en esta caso TCP/IP
+	*/
+	sd=socket(AF_INET,SOCK_STREAM,0);
+	
+	if (sd < 0) { /*se checa que no exista error*/
+		perror("Error al abrir socket");
+		exit(2); 	
+	}
+
+	/*los siguientes pasos preperan la informacion para que el kernel
+	conozca como debe conectarse al otro nodo
+	una estructura sockaddr debe indicar el tipo de direccion,
+	la direccion IP y el puerto
+	*/
+	puerto= atoi(argv[2]);
+	sockaddr.sin_family=AF_INET; /*la direccion que se especifica 
+					esta en formato IP*/
+	sockaddr.sin_addr.s_addr= inet_addr(argv[1]);
+	sockaddr.sin_port=  htons(puerto);
+
+	/*para conectarse, se debe utilizar la funcion connec,
+	que recibe el socket descriptor, la estructura para realizar
+	datos de conexion y el tamanno de la misma
+	*/
+
+	if (connect(sd,(struct sockaddr*)&sockaddr ,sizeof(sockaddr))) {
+		perror("error al abrir conexion");
+		exit(3);
+	}
+
+	while ((nbytes=read(sd,buffer,128)) >0) {
+		write(2,buffer,nbytes);	
+	}
+	/*siempre se debe cerrar la conexion*/
+	close(sd);
+}
+
+Algunos protocolos esperan primero que se les escriba algo, en lugar
+que ellos responder de inmediato, por esta razón se puede trabar el ejemplo2.
+
+El Ejemplo3 utiliza el servicio de echo de UNIX, que consiste en regresar
+al cliente lo mismo que se escribe. Este es el programa:
+
+/*Ejemplo1 Un proceso cliente se conecta al servicio de fecha de UNIX
+por el puerto 13*/
+
+#include <sys/socket.h>
+/*#include <netinet/in.h>*/
+
+#include "miin.h"
+
+main(int argc,char * argv[]){ /*la direccion IP se obtiene en el primer 
+				argumento
+				*/
+	int puerto= 7; /*el puerto del servicio del tiempo es 13*/
+	int sd; /*este es el descriptor de socket, se maneja como un
+		archivo*/
+	struct sockaddr_in sockaddr; /*estructura de datos para prover lo
+				necesario para conectarse al servicio*/
+	int nbytes;
+	char buffer[128];
+
+	if (argc<=1) {
+		printf("Ejemplo1 <direccionIP>\n");
+		exit(1);
+	}
+
+	/* se abre un socket que direcciona la informacion 
+	a una nodo con direccion IP, por tanto se indica AF_INET.
+	Se utiliza TCP. por tanto el modo de conexion es orientado
+	a flujo de bytes.
+	El tercer parametro se pone a 0 para dejar que el kernel
+	utilice el protocolo por omision, en esta caso TCP/IP
+	*/
+	sd=socket(AF_INET,SOCK_STREAM,0);
+	
+	if (sd < 0) { /*se checa que no exista error*/
+		perror("Error al abrir socket");
+		exit(2); 	
+	}
+
+	/*los siguientes pasos preperan la informacion para que el kernel
+	conozca como debe conectarse al otro nodo
+	una estructura sockaddr debe indicar el tipo de direccion,
+	la direccion IP y el puerto
+	*/
+	sockaddr.sin_family=AF_INET; /*la direccion que se especifica 
+					esta en formato IP*/
+	sockaddr.sin_addr.s_addr= inet_addr(argv[1]);
+	sockaddr.sin_port=  htons(puerto);
+
+	/*para conectarse, se debe utilizar la funcion connec,
+	que recibe el socket descriptor, la estructura para realizar
+	datos de conexion y el tamanno de la misma
+	*/
+
+	if (connect(sd,(struct sockaddr*)&sockaddr ,sizeof(sockaddr))) {
+		perror("error al abrir conexion");
+		exit(3);
+	}
+
+	sprintf(buffer,"hola servicio echo\n");
+	write(sd,buffer,strlen(buffer));
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+	/*siempre se debe cerrar la conexion*/
+	close(sd);
+}
+
+ Ejemplo3 127.0.0.1
+ hola servicio echo
+
+El Ejemplo4 envia un correo de Bill Clinton a la cuenta de root del nodo 
+indicado (OJO, cambiar este comportamiento para que lo envie a la cuenta
+de correo propia)
+
+#include <sys/socket.h>
+/*#include <netinet/in.h>*/
+
+#include "miin.h"
+
+main(int argc,char * argv[]){ /*la direccion IP se obtiene en el primer 
+				argumento
+				*/
+	int puerto= 25; /*el puerto del servicio del tiempo es 13*/
+	int sd; /*este es el descriptor de socket, se maneja como un
+		archivo*/
+	struct sockaddr_in sockaddr; /*estructura de datos para prover lo
+				necesario para conectarse al servicio*/
+	int nbytes;
+	char buffer[128];
+
+	if (argc<=1) {
+		printf("Ejemplo4 <direccionIP>\n");
+		exit(1);
+	}
+
+	/* se abre un socket que direcciona la informacion 
+	a una nodo con direccion IP, por tanto se indica AF_INET.
+	Se utiliza TCP. por tanto el modo de conexion es orientado
+	a flujo de bytes.
+	El tercer parametro se pone a 0 para dejar que el kernel
+	utilice el protocolo por omision, en esta caso TCP/IP
+	*/
+	sd=socket(AF_INET,SOCK_STREAM,0);
+	
+	if (sd < 0) { /*se checa que no exista error*/
+		perror("Error al abrir socket");
+		exit(2); 	
+	}
+
+	/*los siguientes pasos preperan la informacion para que el kernel
+	conozca como debe conectarse al otro nodo
+	una estructura sockaddr debe indicar el tipo de direccion,
+	la direccion IP y el puerto
+	*/
+	sockaddr.sin_family=AF_INET; /*la direccion que se especifica 
+					esta en formato IP*/
+	sockaddr.sin_addr.s_addr= inet_addr(argv[1]);
+	sockaddr.sin_port=  htons(puerto);
+
+	/*para conectarse, se debe utilizar la funcion connec,
+	que recibe el socket descriptor, la estructura para realizar
+	datos de conexion y el tamanno de la misma
+	*/
+
+	if (connect(sd,(struct sockaddr*)&sockaddr ,sizeof(sockaddr))) {
+		perror("error al abrir conexion");
+		exit(3);
+	}
+
+	/*leer primer token,presentacion del servicio de correo*/
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+
+	/*presentarse con servicio de correo*/
+	sprintf(buffer,"HELO abc.com\n");
+	write(sd,buffer,strlen(buffer));
+
+	/*leer segundo token, contestacion a HELO*/
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+
+	/*indicarle de quien viene el mail*/
+	sprintf(buffer,"MAIL FROM:<clinton@whitehouse.gov>\n");
+	write(sd,buffer,strlen(buffer));
+	
+	/*leer tercer token, contestacion a MAIL FROM*/
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+
+	/*indicarle a quien viene el mail*/
+	sprintf(buffer,"RCPT TO:<root>\n");
+	write(sd,buffer,strlen(buffer));
+	
+	/*leer cuarto token, contestacion a RCPT TO*/
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+
+	/*indicarle los datos*/
+	sprintf(buffer,"DATA\nI love Monica\n.\n");
+	write(sd,buffer,strlen(buffer));
+	
+	/*leer quinto token, contestacion a DATA*/
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+
+	/*despedirse*/
+	sprintf(buffer,"QUIT\n");
+	write(sd,buffer,strlen(buffer));
+	
+	/*leer sexto token, contestacion a DATA*/
+	nbytes=read(sd,buffer,128);
+	write(2,buffer,nbytes);	
+
+
+
+	/*siempre se debe cerrar la conexion*/
+	close(sd);
+}
+
+ Ejemplo4 127.0.0.1
+220 wotan. Sendmail SMI-8.6/SMI-SVR4 ready at Sun, 16 May 1999 22:48:45 -0500
+250 wotan. Hello localhost [127.0.0.1], pleased to meet you
+250 <clinton@whitehouse.gov>... Sender ok
+250 <root>... Recipient ok
+354 Enter mail, end with "." on a line by itself
+250 WAA00830 Message accepted for delivery
+
+Algunos hackers o crackers pueden utilizar este programa para enviar, por
+ejemplo, un archivo de 100 MB a una maquina remota, y atacar a la maquina,
+o lanzar este proceso varias veces, en distinas maquinas, para saturar el
+area de correo electrónico. (Nota, no hacer esto).
+
+Un servicio que a veces es util, es finger, el Ejemplo5 muestra como
+utilizarlo:
+
+/*Ejemplo1 Un proceso cliente se conecta al servicio de fecha de UNIX
+por el puerto 13*/
+
+#include <sys/socket.h>
+/*#include <netinet/in.h>*/
+
+#include "miin.h"
+
+main(int argc,char * argv[]){ /*la direccion IP se obtiene en el primer 
+				argumento
+				*/
+	int puerto= 79; /*el puerto del servicio del tiempo es 13*/
+	int sd; /*este es el descriptor de socket, se maneja como un
+		archivo*/
+	struct sockaddr_in sockaddr; /*estructura de datos para prover lo
+				necesario para conectarse al servicio*/
+	int nbytes;
+	char buffer[128];
+
+	if (argc<=1) {
+		printf("Ejemplo1 <direccionIP>\n");
+		exit(1);
+	}
+
+	/* se abre un socket que direcciona la informacion 
+	a una nodo con direccion IP, por tanto se indica AF_INET.
+	Se utiliza TCP. por tanto el modo de conexion es orientado
+	a flujo de bytes.
+	El tercer parametro se pone a 0 para dejar que el kernel
+	utilice el protocolo por omision, en esta caso TCP/IP
+	*/
+	sd=socket(AF_INET,SOCK_STREAM,0);
+	
+	if (sd < 0) { /*se checa que no exista error*/
+		perror("Error al abrir socket");
+		exit(2); 	
+	}
+
+	/*los siguientes pasos preperan la informacion para que el kernel
+	conozca como debe conectarse al otro nodo
+	una estructura sockaddr debe indicar el tipo de direccion,
+	la direccion IP y el puerto
+	*/
+	sockaddr.sin_family=AF_INET; /*la direccion que se especifica 
+					esta en formato IP*/
+	sockaddr.sin_addr.s_addr= inet_addr(argv[1]);
+	sockaddr.sin_port=  htons(puerto);
+
+	/*para conectarse, se debe utilizar la funcion connec,
+	que recibe el socket descriptor, la estructura para realizar
+	datos de conexion y el tamanno de la misma
+	*/
+
+	if (connect(sd,(struct sockaddr*)&sockaddr ,sizeof(sockaddr))) {
+		perror("error al abrir conexion");
+		exit(3);
+	}
+
+
+	/*preguntarle a finger*/
+	sprintf(buffer,"@localhost\n");
+	write(sd,buffer,strlen(buffer));
+
+	while ( (nbytes=read(sd,buffer,128)) > 0 ) {
+		write(2,buffer,nbytes);	
+	}
+
+
+
+	/*siempre se debe cerrar la conexion*/
+	close(sd);
+}
+
+Ejercicio:
+
++ El Ejemplo6 no existe y es a proposito. Investigar como funciona el protocolo
+HTTP y enviar una petición al servidor remoto  para obtener una página HTTP.
+
++ Extender el Ejemplo6 de tal forma que se le de una lista de direcciones HTTP
+ y que baje todas a disco.
+
++ Servidor.
+
+Un servidor es el encargado de dar el servicio a un cliente que envie
+un mensaje siguiendo un protocolo.
+
+El siguiente ejemplo muestra como se escribe un servidor, sin embargo
+no contesta nada al cliente.
+
+#include <sys/socket.h>
+#include <signal.h>
+
+#include "miin.h"
+
+int serversocket; /*descriptor de socket para servidor*/
+
+void fin(int signo) {
+	close(serversocket);
+	exit(0);
+}
+
+main(int argc,char * argv[]) {
+	int sock; /*descriptor de socket para cada conexion*/
+	int puerto; /*puerto donde se escucha el servicio*/
+	struct sockaddr_in sockaddr;
+	struct sigaction accion; /*para manejar un sennal de 15*/
+
+	if (argc <=1) {
+		printf("Ejemplo7 <puerto>\n");
+		exit(1);
+	}
+
+	accion.sa_handler=fin;
+	sigemptyset(&(accion.sa_mask));
+	accion.sa_flags=0;
+
+	sigaction(SIGTERM,&accion,(struct sigaction *)0);
+ 
+	puerto=atoi(argv[1]);
+
+	serversocket=socket(AF_INET,SOCK_STREAM,0); /*abrir socket 
+					para servidor*/	
+
+	/*llenar estructura para ligar el socket con el puerto TCP*/	
+	sockaddr.sin_family= AF_INET; /*utilizar direccion con formato IP*/
+	sockaddr.sin_addr.s_addr= htonl(0x00000000); /*ligar socket 
+					a cualquier direccion (0.0.0.0)posible
+					de la maquina*/
+	sockaddr.sin_port= htons(puerto);
+
+	/*aplicar la asociacion con el puerto*/
+	if (
+	 bind(serversocket, ( struct sockaddr *)&sockaddr,sizeof(sockaddr)) < 0
+	) {
+		perror("error en bind\n");
+		exit(2);
+	}
+
+
+	/*indica al sistema operativo que debe poner el socket en estado de 
+	LISTEN*/
+	if ( listen(serversocket,5) < 0) {
+		perror("error en listen");
+		exit(3);
+	}
+
+	/*esperar conexion*/
+
+	while (1) {
+		struct sockaddr_in claddr;
+		int rtn,len=sizeof(claddr);
+		char buffer[128];
+		/*ejecutar la instruccion accept para
+		recibir conexion TCP de un cliente*/
+		rtn=
+		accept(serversocket,(struct sockaddr *)&claddr,&len);
+		if (rtn < 0) {
+			perror("error en accept");
+		} else {	
+			sprintf(buffer,"Cliente con datos IP:%s,puerto:%d\n",
+			inet_ntoa(claddr.sin_addr),claddr.sin_port);
+			write(2,buffer,strlen(buffer));
+			sock=rtn;
+			close(sock);
+		}
+	}
+
+	close(serversocket);
+}
+
+El Ejemplo8 es similar al servicio echo de UNIX, solo que responde en
+mayusculas todo lo que se le envía.
+
+#include <sys/socket.h>
+#include <signal.h>
+
+#include "miin.h"
+
+int serversocket; /*descriptor de socket para servidor*/
+
+void fin(int signo) {
+	close(serversocket);
+	exit(0);
+}
+
+main(int argc,char * argv[]) {
+	int sock; /*descriptor de socket para cada conexion*/
+	int puerto; /*puerto donde se escucha el servicio*/
+	struct sockaddr_in sockaddr;
+	struct sigaction accion; /*para manejar un sennal de 15*/
+
+	if (argc <=1) {
+		printf("Ejemplo8 <puerto>\n");
+		exit(1);
+	}
+
+	accion.sa_handler=fin;
+	sigemptyset(&(accion.sa_mask));
+	accion.sa_flags=0;
+
+	sigaction(SIGTERM,&accion,(struct sigaction *)0);
+ 
+	puerto=atoi(argv[1]);
+
+	serversocket=socket(AF_INET,SOCK_STREAM,0); /*abrir socket 
+					para servidor*/	
+
+	/*llenar estructura para ligar el socket con el puerto TCP*/	
+	sockaddr.sin_family= AF_INET; /*utilizar direccion con formato IP*/
+	sockaddr.sin_addr.s_addr= htonl(0x00000000); /*ligar socket 
+					a cualquier direccion (0.0.0.0)posible
+					de la maquina*/
+	sockaddr.sin_port= htons(puerto);
+
+	/*aplicar la asociacion con el puerto*/
+	if (
+	 bind(serversocket, ( struct sockaddr *)&sockaddr,sizeof(sockaddr)) < 0
+	) {
+		perror("error en bind\n");
+		exit(2);
+	}
+
+
+	/*indica al sistema operativo que debe poner el socket en estado de 
+	LISTEN*/
+	if ( listen(serversocket,5) < 0) {
+		perror("error en listen");
+		exit(3);
+	}
+
+	/*esperar conexion*/
+
+	while (1) {
+		struct sockaddr_in claddr;
+		int rtn,len=sizeof(claddr);
+		char buffer[128];
+		/*ejecutar la instruccion accept para
+		recibir conexion TCP de un cliente*/
+		rtn=
+		accept(serversocket,(struct sockaddr *)&claddr,&len);
+		if (rtn < 0) {
+			perror("error en accept");
+		} else {	
+			int nbytes;
+			sprintf(buffer,"Cliente con datos IP:%s,puerto:%d\n",
+			inet_ntoa(claddr.sin_addr),claddr.sin_port);
+			write(2,buffer,strlen(buffer));
+			sock=rtn;
+
+			nbytes=read(sock,buffer,128);
+				
+			if (nbytes < 0) {
+				perror("error en lectura de peticion");
+				exit(3);
+			} else {
+				int i;
+				buffer[nbytes]=0;
+
+				for (i=0;i< strlen(buffer);i++)
+					buffer[i]=toupper( buffer[i]);
+				write(sock,buffer,strlen(buffer));
+				close(sock); /*se cierra el socket*/	
+			} 
+		}
+	}
+
+	close(serversocket);
+}
+
+Probar este servidor, con varios usuarios tratando de conectarse a este
+servicio.
+
+Esto ultimo muestra que el Ejemplo8 es un servicio de un solo usuario o
+conexión, mientras no se procese la primera conexión, los demas quedan
+en espera de respuesta.
+
+Para poder superar este problema, se debe utilizar la capacidad de multitarea
+de UNIX, utilizando la llamada fork.
+
+El siguiente ejemplo muestra esta capacidad.
+
+#include <sys/socket.h>
+#include <signal.h>
+
+#include "miin.h"
+
+int serversocket; /*descriptor de socket para servidor*/
+
+void fin(int signo) {
+	close(serversocket);
+	exit(0);
+}
+
+main(int argc,char * argv[]) {
+	int sock; /*descriptor de socket para cada conexion*/
+	int puerto; /*puerto donde se escucha el servicio*/
+	struct sockaddr_in sockaddr;
+	struct sigaction accion; /*para manejar un sennal de 15*/
+
+	if (argc <=1) {
+		printf("Ejemplo8 <puerto>\n");
+		exit(1);
+	}
+
+	accion.sa_handler=fin;
+	sigemptyset(&(accion.sa_mask));
+	accion.sa_flags=0;
+
+	sigaction(SIGTERM,&accion,(struct sigaction *)0);
+ 
+	puerto=atoi(argv[1]);
+
+	serversocket=socket(AF_INET,SOCK_STREAM,0); /*abrir socket 
+					para servidor*/	
+
+	/*llenar estructura para ligar el socket con el puerto TCP*/	
+	sockaddr.sin_family= AF_INET; /*utilizar direccion con formato IP*/
+	sockaddr.sin_addr.s_addr= htonl(0x00000000); /*ligar socket 
+					a cualquier direccion (0.0.0.0)posible
+					de la maquina*/
+	sockaddr.sin_port= htons(puerto);
+
+	/*aplicar la asociacion con el puerto*/
+	if (
+	 bind(serversocket, ( struct sockaddr *)&sockaddr,sizeof(sockaddr)) < 0
+	) {
+		perror("error en bind\n");
+		exit(2);
+	}
+
+
+	/*indica al sistema operativo que debe poner el socket en estado de 
+	LISTEN*/
+	if ( listen(serversocket,5) < 0) {
+		perror("error en listen");
+		exit(3);
+	}
+
+	/*esperar conexion*/
+
+	while (1) {
+		struct sockaddr_in claddr;
+		int rtn,len=sizeof(claddr);
+		char buffer[128];
+		/*ejecutar la instruccion accept para
+		recibir conexion TCP de un cliente*/
+		rtn=
+		accept(serversocket,(struct sockaddr *)&claddr,&len);
+		if (rtn < 0) {
+			perror("error en accept");
+		} else {	
+			int pid;
+			sprintf(buffer,"Cliente con datos IP:%s,puerto:%d\n",
+			inet_ntoa(claddr.sin_addr),claddr.sin_port);
+			write(2,buffer,strlen(buffer));
+			sock=rtn;
+
+			pid=fork();
+			if (pid < 0) {
+				perror("no se pueda procesar peticion");
+				continue;	
+			} else if (pid==0) {
+				int nbytes;
+				nbytes=read(sock,buffer,128);
+				
+				if (nbytes < 0) {
+					perror("error en lectura de peticion");
+					exit(3);
+				} else {
+					int i;
+					buffer[nbytes]=0;
+
+					for (i=0;i< strlen(buffer);i++)
+						buffer[i]=toupper( buffer[i]);
+					write(sock,buffer,strlen(buffer));
+				}
+				close(sock); /*se cierra el socket*/	
+				exit(0);
+			} else {
+				close(sock); /*proceso padre cierra socket*/
+			}
+		}
+	}
+
+	close(serversocket);
+}
+
+ejercicio.
++ El ejemplo9 utiliza multitare para su procesamiento. Investigar y
+codificar como implantar con multithreading. cuál es la ventaja del multithreading con respecto a multitarea ?
+
++ Manipulacion de sockets.
+
+Es posible que un socket se manipule como archivo.
+
+El siguiente programa tiene como funcion atender la petición de un
+programa cliente y asignarle una conexion, manipulada por un proceso,
+que arranca un cat.
+
+El proceso servidor espera que se le escriba la ruta del archivo a 
+desplegar.
+
+
+
+
+Ejercicios:
+
++ Investigar como Windows NT implanta mecanismos de comunicación entre
+procesos distribuídos.
++ Conectarse al siguiente URL: http://brigade.ml.org/darknite y:
+	+ Copiar a disco local todos los programas que tengan que ver
+	con sockets.
+	+ Compilarlos.
+	+ Documentarlos.
+	+ Probarlos.
+	+ Si algo no se entiende, intercambiar correspondencia
+	con el autor de los programas.
+(OJO este nodo esta hecho por un hacker, puede tener cosas interesantes
+y que se pueden emplear para correcto uso o para ...)
++ En el esquema que se proporciona (tomado del artículo Wire Pirates de Paul Wallich de Scientific American The Compuer in the 21st Century 1995), muestran varios servicios, investigar un hueco de seguridad de cada uno.
+se utilizan en Internet o en sistemas de oficina.
