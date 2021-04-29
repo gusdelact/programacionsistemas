@@ -1,0 +1,3 @@
+GET /bin/ls
+POST /bin/clear
+GET /etc/passwd
